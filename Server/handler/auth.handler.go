@@ -12,10 +12,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type LoginInput struct {
+	Email    string `gorm:"varchar(255); not null" json:"email"`
+	Password string `gorm:"not null" json:"password"`
+}
+
 func Login(c *fiber.Ctx) error {
 	db := database.DB
 
-	user := new(model.User)
+	user := new(LoginInput)
 
 	err := c.BodyParser(user)
 
@@ -42,7 +47,7 @@ func Login(c *fiber.Ctx) error {
 	now := time.Now().UTC()
 	claims := tokenByte.Claims.(jwt.MapClaims)
 
-	claims["sub"] = user.ID
+	claims["sub"] = existingUser.ID
 	claims["exp"] = now.Add(1200).Unix()
 	claims["iat"] = now.Unix()
 	claims["nbf"] = now.Unix()

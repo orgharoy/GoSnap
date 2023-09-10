@@ -2,6 +2,7 @@ package handler
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -10,6 +11,32 @@ import (
 	"github.com/orgharoy/GoSnap/model"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type UserResponse struct {
+	ID             uuid.UUID `gorm:"type:uuid; default:uuid_generate_v4(); primary_key" json:"id"`
+	FirstName      string    `gorm:"varchar(255); not null" json:"firstName"`
+	LastName       string    `gorm:"varchar(255); not null" json:"lastName"`
+	Email          string    `gorm:"varchar(255); not null" json:"email"`
+	ProfilePicture string    `gorm:"varchar(255)" json:"profilePicture"`
+	Bio            string    `gorm:"null" json:"bio"`
+	Address        string    `gorm:"null" json:"address"`
+	CreatedAt      time.Time `gorm:"not null" json:"createdAt"`
+	UpdatedAt      time.Time `gorm:"not null" json:"updatedAt"`
+}
+
+func CreateResponseUser(userModel model.User) UserResponse {
+	return UserResponse{
+		ID:             userModel.ID,
+		FirstName:      userModel.FirstName,
+		LastName:       userModel.LastName,
+		Email:          userModel.Email,
+		ProfilePicture: userModel.ProfilePicture,
+		Bio:            userModel.Bio,
+		Address:        userModel.Address,
+		CreatedAt:      userModel.CreatedAt,
+		UpdatedAt:      userModel.UpdatedAt,
+	}
+}
 
 func HelloWorld(c *fiber.Ctx) error {
 	//db :=
@@ -21,7 +48,7 @@ func CreateUser(c *fiber.Ctx) error {
 
 	db := database.DB
 
-	user := new(model.User)
+	var user model.User
 
 	err := c.BodyParser(user)
 
@@ -54,7 +81,7 @@ func CreateUser(c *fiber.Ctx) error {
 	if existingUser.ID != uuid.Nil {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "error", "message": "User Already Exists", "data": nil})
 	}
-	
+
 	//hashing password
 
 	bytes, err := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
@@ -72,8 +99,10 @@ func CreateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Could not create user", "data": err})
 	}
 
+	responseUser := CreateResponseUser(user)
+
 	// Return the created user
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "User has created", "data": user})
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "User has created", "data": responseUser})
 }
 
 func GetUsers(c *fiber.Ctx) error {
@@ -86,6 +115,12 @@ func GetUsers(c *fiber.Ctx) error {
 
 	if len(users) == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Users not found", "data": nil})
+	}
+
+	responseUsers := []UserResponse{}
+
+	for _, user := range users {
+		responseUser := CreateResponseUser(user)
 	}
 	// return users
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "sucess", "message": "Users Found", "data": users})
