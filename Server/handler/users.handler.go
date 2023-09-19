@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"regexp"
 	"time"
 
@@ -26,13 +25,12 @@ type UserResponse struct {
 }
 
 type UpdateUserValues struct {
-	FirstName      string    `gorm:"varchar(255); not null" json:"firstName"`
-	LastName       string    `gorm:"varchar(255); not null" json:"lastName"`
-	Email          string    `gorm:"varchar(255); not null" json:"email"`
-	ProfilePicture string    `gorm:"varchar(255)" json:"profilePicture"`
-	Bio            string    `gorm:"null" json:"bio"`
-	Address        string    `gorm:"null" json:"address"`
-	CreatedAt      time.Time `gorm:"not null" json:"createdAt"`
+	FirstName      string `gorm:"varchar(255); not null" json:"firstName"`
+	LastName       string `gorm:"varchar(255); not null" json:"lastName"`
+	Email          string `gorm:"varchar(255); not null" json:"email"`
+	ProfilePicture string `gorm:"varchar(255)" json:"profilePicture"`
+	Bio            string `gorm:"null" json:"bio"`
+	Address        string `gorm:"null" json:"address"`
 }
 
 func CreateResponseUser(userModel model.User) UserResponse {
@@ -168,14 +166,24 @@ func UpdateUser(c *fiber.Ctx) error {
 
 	var updateUser UpdateUserValues
 
-	err := c.BodyParser(updateUser)
+	if err := c.BodyParser(&updateUser); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": updateUser})
+	}
 
-	headers := c.Request.Headers
+	password := c.Get("password")
 
-	fmt.Printf(headers)
+	//data validation
 
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
+	// -> empty fields
+	if updateUser.FirstName == "" || updateUser.LastName == "" || updateUser.Email == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Empty Fields", "data": nil})
+	}
+
+	// -> email validation
+	emailRegex := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+	if !emailRegex.MatchString(updateUser.Email) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid Email", "data": nil})
 	}
 
 	db.Find(&user, "id = ?", id)
@@ -184,6 +192,21 @@ func UpdateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "User not found", "data": nil})
 	}
 
-	return nil
+	if updateUser.Email != user.Email {
+		var existingUser model.User
+		db.Find(&existingUser, "email = ?", updateUser.Email)
+
+		if existingUser.ID != uuid.Nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"status": "error", "message": "Email Already Exists", "data": nil})
+		}
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Passwords do not match", "data": nil})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Successfully Update User", "data": password})
 
 }
