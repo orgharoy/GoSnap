@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"regexp"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	helperfunctions "github.com/orgharoy/GoSnap/helperFunctions"
 	"github.com/orgharoy/GoSnap/model"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserResponse struct {
@@ -45,12 +47,6 @@ func CreateResponseUser(userModel model.User) UserResponse {
 		CreatedAt:      userModel.CreatedAt,
 		UpdatedAt:      userModel.UpdatedAt,
 	}
-}
-
-func HelloWorld(c *fiber.Ctx) error {
-	//db :=
-	return c.Status(200).JSON("Hello")
-	//c.Send("Hello, World!")
 }
 
 func CreateUser(c *fiber.Ctx) error {
@@ -217,6 +213,38 @@ func UpdateUser(c *fiber.Ctx) error {
 
 	db.Save(&user)
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Successfully Updated The User", "data": password})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Successfully Updated The User", "data": user})
 
+}
+
+func DeleteUser(c *fiber.Ctx) error {
+	db := database.DB
+
+	id := c.Params("id")
+	password := c.Get("password")
+
+	var user model.User
+
+	// Find the user by ID
+	if err := db.Find(&user, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// User not found
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "User not found", "data": nil})
+		}
+		// Handle other database errors
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Database error", "data": nil})
+	}
+
+	// Check if the provided password matches the user's password
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Password incorrect", "data": nil})
+	}
+
+	// Delete the user
+	if err := db.Delete(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete user", "data": nil})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "User deleted successfully", "data": nil})
 }
