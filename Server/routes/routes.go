@@ -11,6 +11,7 @@ func Routes(app *fiber.App) {
 	app.Post("/users", handler.CreateUser)
 	app.Get("/users", handler.GetUsers)
 	app.Get("/user/:id", handler.GetUser)
+	app.Put("/user/:id", handler.UpdateUser)
 
 	app.Post("/login", handler.Login)
 }

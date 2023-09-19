@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"regexp"
 	"time"
 
@@ -22,6 +23,16 @@ type UserResponse struct {
 	Address        string    `gorm:"null" json:"address"`
 	CreatedAt      time.Time `gorm:"not null" json:"createdAt"`
 	UpdatedAt      time.Time `gorm:"not null" json:"updatedAt"`
+}
+
+type UpdateUserValues struct {
+	FirstName      string    `gorm:"varchar(255); not null" json:"firstName"`
+	LastName       string    `gorm:"varchar(255); not null" json:"lastName"`
+	Email          string    `gorm:"varchar(255); not null" json:"email"`
+	ProfilePicture string    `gorm:"varchar(255)" json:"profilePicture"`
+	Bio            string    `gorm:"null" json:"bio"`
+	Address        string    `gorm:"null" json:"address"`
+	CreatedAt      time.Time `gorm:"not null" json:"createdAt"`
 }
 
 func CreateResponseUser(userModel model.User) UserResponse {
@@ -57,6 +68,7 @@ func CreateUser(c *fiber.Ctx) error {
 	}
 
 	//data validation
+
 	// -> empty fields
 	if user.FirstName == "" || user.LastName == "" || user.Email == "" || user.Password == "" {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Empty Fields", "data": nil})
@@ -69,6 +81,7 @@ func CreateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid Email", "data": nil})
 	}
 
+	// -> password validation
 	if !helperfunctions.IsValidPassword(user.Password) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Password must be longer than 8 characters, contain both uppercase and lowercase letter and have have special characters", "data": nil})
 	}
@@ -79,7 +92,7 @@ func CreateUser(c *fiber.Ctx) error {
 	db.Find(&existingUser, "email = ?", user.Email)
 
 	if existingUser.ID != uuid.Nil {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "error", "message": "User Already Exists", "data": nil})
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "error", "message": "Account with this Email already exists", "data": nil})
 	}
 
 	//hashing password
@@ -121,9 +134,10 @@ func GetUsers(c *fiber.Ctx) error {
 
 	for _, user := range users {
 		responseUser := CreateResponseUser(user)
+		responseUsers = append(responseUsers, responseUser)
 	}
 	// return users
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "sucess", "message": "Users Found", "data": users})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "sucess", "message": "Users Found", "data": responseUsers})
 }
 
 func GetUser(c *fiber.Ctx) error {
@@ -139,5 +153,37 @@ func GetUser(c *fiber.Ctx) error {
 	if user.ID == uuid.Nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "User not found", "data": nil})
 	}
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "User Found", "data": user})
+
+	responseUser := CreateResponseUser(user)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "User Found", "data": responseUser})
+}
+
+func UpdateUser(c *fiber.Ctx) error {
+	db := database.DB
+
+	id := c.Params("id")
+
+	var user model.User
+
+	var updateUser UpdateUserValues
+
+	err := c.BodyParser(updateUser)
+
+	headers := c.Request.Headers
+
+	fmt.Printf(headers)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
+	}
+
+	db.Find(&user, "id = ?", id)
+
+	if user.ID == uuid.Nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "User not found", "data": nil})
+	}
+
+	return nil
+
 }
