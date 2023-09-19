@@ -194,7 +194,7 @@ func UpdateUser(c *fiber.Ctx) error {
 
 	if updateUser.Email != user.Email {
 		var existingUser model.User
-		db.Find(&existingUser, "email = ?", updateUser.Email)
+		db.Where("email = ? AND id != ?", updateUser.Email, id).Find(&existingUser)
 
 		if existingUser.ID != uuid.Nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"status": "error", "message": "Email Already Exists", "data": nil})
@@ -207,6 +207,16 @@ func UpdateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Passwords do not match", "data": nil})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Successfully Update User", "data": password})
+	user.FirstName = updateUser.FirstName
+	user.LastName = updateUser.LastName
+	user.Email = updateUser.Email
+	user.ProfilePicture = updateUser.ProfilePicture
+	user.Bio = updateUser.Bio
+	user.Address = updateUser.Address
+	user.UpdatedAt = time.Now()
+
+	db.Save(&user)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Successfully Updated The User", "data": password})
 
 }
