@@ -17,4 +17,5 @@ type User struct {
 	Password       string    `gorm:"not null" json:"password"`
 	CreatedAt      time.Time `gorm:"not null" json:"createdAt"`
 	UpdatedAt      time.Time `gorm:"not null" json:"updatedAt"`
+	Post           []Post
 }

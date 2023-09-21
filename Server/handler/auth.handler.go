@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,20 +41,21 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Passwords do not match", "data": nil})
 	}
 
-	tokenByte := jwt.New(jwt.SigningMethodHS256)
+	token := jwt.New(jwt.SigningMethodHS256)
 
 	now := time.Now().UTC()
-	claims := tokenByte.Claims.(jwt.MapClaims)
 
-	claims["sub"] = existingUser.ID
-	claims["exp"] = now.Add(1200).Unix()
+	// Set claims (payload data) in the token.
+	claims := token.Claims.(jwt.MapClaims)
+	claims["userID"] = existingUser.ID
 	claims["iat"] = now.Unix()
-	claims["nbf"] = now.Unix()
+	claims["exp"] = now.Add(time.Hour * 24).Unix()
 
-	tokenString, err := tokenByte.SignedString([]byte("poiwnskjfowijef8972POIUYhqawiehjis"))
+	// Sign the token with the secret key.
+	tokenString, err := token.SignedString([]byte("pwoEQuF2jdk4c!nW$Nuew^rf6kjnV"))
 
 	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": fmt.Sprintf("generating JWT Token failed: %v", err)})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": "generating JWT Token failed"})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "token": tokenString})

@@ -26,7 +26,7 @@ func Connect() error {
 	DB.Logger = logger.Default.LogMode(logger.Info)
 
 	log.Println("Running Migrations")
-	DB.AutoMigrate(&model.User{})
+	DB.AutoMigrate(&model.User{}, &model.Post{})
 
 	log.Println("🚀 Connected Successfully to the Database")
 
