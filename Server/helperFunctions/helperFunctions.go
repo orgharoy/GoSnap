@@ -34,31 +34,20 @@ func IsValidPassword(password string) bool {
 // ExtractUserIDFromToken extracts the user ID from a JWT token string.
 
 func ExtractUserIDFromToken(tokenString string) (uuid.UUID, error) {
-	// Parse the JWT token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Check the signing method, and provide the secret key used for signing
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fiber.ErrForbidden // Invalid signing method
-		}
-		return []byte("pwoEQuF2jdk4c!nW$Nuew^rf6kjnV"), nil // Replace with your secret key
+		return []byte("pwoEQuF2jdk4c!nW$Nuew^rf6kjnV"), nil
 	})
 
 	if err != nil {
-		return uuid.Nil, err // Failed to parse the token
+		return uuid.Nil, err
 	}
 
-	// Check if the token is valid
-	if !token.Valid {
-		return uuid.Nil, fiber.ErrForbidden // Invalid token
-	}
-
-	// Access the claims
 	claims, ok := token.Claims.(jwt.MapClaims)
+
 	if !ok {
-		return uuid.Nil, fiber.ErrForbidden // Invalid claims
+		return uuid.Nil, err
 	}
 
-	// Extract the userID from the claims and convert it to uuid.UUID
 	userIDStr, ok := claims["userID"].(string)
 	if !ok {
 		return uuid.Nil, fiber.ErrForbidden // userID not found in claims
