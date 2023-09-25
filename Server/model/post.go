@@ -14,5 +14,5 @@ type Post struct {
 	Address     string    `gorm:"null" json:"address"`
 	CreatedAt   time.Time `gorm:"not null" json:"createdAt"`
 	UpdatedAt   time.Time `gorm:"not null" json:"updatedAt"`
-	UserID      uuid.UUID `gorm:"type:uuid; not null" json:"userId"`
+	UserID      uuid.UUID `gorm:"type:uuid; not null" json:"user_id"`
 }
